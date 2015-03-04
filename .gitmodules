@@ -1,0 +1,3 @@
+[submodule "extern/enhanced-ruby-mode"]
+	path = extern/enhanced-ruby-mode
+	url = https://github.com/zenspider/enhanced-ruby-mode
