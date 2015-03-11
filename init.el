@@ -16,10 +16,9 @@
 (setq package-archives '(("gnu"          . "http://elpa.gnu.org/packages/")
                          ("org"          . "http://orgmode.org/elpa/")
                          ("marmalade"    . "http://marmalade-repo.org/packages/")
-;;                       ("melpa-stable" . "http://melpa-stable.milkbox.net/packages/")
                          ("melpa"        . "http://melpa.org/packages/")))
-
 (package-initialize)
+
 (defun require-package (package)
   (setq-default highlight-tabs t)
   "Install given PACKAGE."
@@ -57,14 +56,6 @@
 
 ;; Highlight matching parentheses
 (show-paren-mode 1)
-
-;; org-mode customization
-
-(setq org-todo-keywords ; Add some custom TODO's
-      '((sequence "BACKLOG" "INPROGRESS" "REVIEW" "|" "APPROVED" "DELAYED" "ABORTED") ; JIRA Workflow TODO's
-        (type "MUSTHAVE" "VERYIMPORTANT" "IMPORTANT" "NICETOHAVE" "|" "MISFEATURE") ; Add Priority Keywords
-        (type "PRESENT" "ABSENT" "|" "DECLINED") ; Meeting Attendence Tracking
-         ))
 
 ;; Rainbow Delimiters
 (require 'rainbow-delimiters)
@@ -109,6 +100,8 @@
 (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
 (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
 (require 'enh-ruby-mode)
+;; Inf-Ruby
+(setq inf-ruby-default-implementation "pry") ; Use pry by default instead of irb for inf-ruby mode
 
 (provide 'init)
 ;;; init.el ends here
