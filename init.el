@@ -90,16 +90,25 @@
 ;; Enable 80-column fill indicator for C files
 (add-hook 'c-mode-hook 'fci-mode)
 (add-hook 'cc-mode-hook 'turn-on-auto-fill)
+(add-hook 'c-mode-hook 'auto-complete-mode)
+(add-hook 'cc-mode-hook 'auto-complete-mode)
 
 ;; Require ox-confluence
 (require 'ox-confluence)
 
 ;; Enhanced Ruby Mode
+
+(add-hook 'enh-ruby-mode-hook 'fci-mode)
+(add-hook 'enh-ruby-mode-hook 'turn-on-auto-fill)
+(add-hook 'enh-ruby-mode-hook 'rainbow-delimiters-mode)
+(add-hook 'enh-ruby-mode-hook 'auto-complete-mode)
+
 (add-to-list 'load-path (concat user-emacs-directory (convert-standard-filename "extern/enhanced-ruby-mode/")))
 (autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
 (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
 (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
 (require 'enh-ruby-mode)
+
 ;; Inf-Ruby
 (setq inf-ruby-default-implementation "pry") ; Use pry by default instead of irb for inf-ruby mode
 
