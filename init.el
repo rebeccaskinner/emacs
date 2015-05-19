@@ -85,6 +85,10 @@
   (turn-on-visual-line-mode)
   (window-margin-mode))
 
+(defun enable-expand-region ()
+  (require 'expand-region)
+  (global-set-key (kbd "C-=") 'er/expand-region))
+
 ;; mode specific configs
 
 (defun default-programming-config ()
@@ -92,7 +96,8 @@
   (auto-complete-mode 1)
   (rainbow-delimiters-mode 1)
   (fci-mode 1)
-  (set-fill-column 80))
+  (set-fill-column 80)
+  (enable-expand-region))
 
 ;; emacs lisp mode configuration
 
@@ -107,20 +112,127 @@
   (setq visual-line-fringe-indicators '(left-curly-arrow right-curly-arrow))
   (window-margin-mode)
   )
-  
+
+(defun load-enh-ruby-mode ()
+  (defvar ruby-mode-path (convert-standard-filename
+                          "extern/enhanced-ruby-mode/"))
+  (add-to-list 'load-path (concat user-emacs-directory ruby-mode-path))
+  (autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
+  (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
+  (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
+  (require 'enh-ruby-mode)
+  )
+
+(defun turn-on-enhanced-ruby-mode ()
+  (load-enh-ruby-mode)
+  (add-hook 'enh-ruby-mode-hook 'fci-mode)
+  (add-hook 'enh-ruby-mode-hook 'turn-on-auto-fill)
+  (add-hook 'enh-ruby-mode-hook 'rainbow-delimiters-mode)
+  (add-hook 'enh-ruby-mode-hook 'auto-complete-mode)
+  )
+
+(defun configure-inf-ruby ()
+  ;; Use Pry instead of irb as the REPL for inferior ruby mode
+  (setq inf-ruby-default-implementation "pry")
+  )
+
+(defun ruby-config ()
+  (default-programming-config)
+  (configure-inf-ruby)
+  (turn-on-enhanced-ruby-mode)
+  )
 
 (add-hook 'json-mode-hook 'json-mode-config)
+(add-hook 'markdown-mode-hook 'default-programming-config)
 
 ;; Haskell Mode
 
 ;; Set the haskell-mode default indentation mode, this is required for
 ;; haskell-mode to work
 
+(require 'haskell-interactive-mode)
+(require 'haskell-process)
+(load "haskell-mode-autoloads")
+
+(custom-set-variables
+ '(haskell-notify-p t)
+ '(haskell-tags-on-save t)
+ '(haskell-stylish-on-save t)
+ )
+
+(defun cabal-path-cfg ()
+  (defvar cabal-path)
+  (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
+  (setenv "PATH" (concat (getenv "PATH") '(concat ":" 'cabal-path)))
+  (setq exec-path (append exec-path 'cabal-path))
+  )
+
 (defun haskell-config ()
   (default-programming-config)
-  (haskell-indentation 1))
+  (cabal-path-cfg)
+  ;; Use simple indentation.
+  (turn-on-haskell-simple-indent)
+  (define-key haskell-mode-map (kbd "<return>") 'haskell-simple-indent-newline-same-col)
+  (define-key haskell-mode-map (kbd "C-<return>") 'haskell-simple-indent-newline-indent)
 
+  ;; Load the current file (and make a session if not already made).
+  (define-key haskell-mode-map [?\C-c ?\C-l] 'haskell-process-load-file)
+  (define-key haskell-mode-map [f5] 'haskell-process-load-file)
+
+  ;; Switch to the REPL.
+  (define-key haskell-mode-map [?\C-c ?\C-z] 'haskell-interactive-switch)
+  ;; “Bring” the REPL, hiding all other windows apart from the source
+  ;; and the REPL.
+  (define-key haskell-mode-map (kbd "C-`") 'haskell-interactive-bring)
+
+  ;; Build the Cabal project.
+  (define-key haskell-mode-map (kbd "C-c C-c") 'haskell-process-cabal-build)
+  ;; Interactively choose the Cabal command to run.
+  (define-key haskell-mode-map (kbd "C-c c") 'haskell-process-cabal)
+
+  ;; Get the type and info of the symbol at point, print it in the
+  ;; message buffer.
+  (define-key haskell-mode-map (kbd "C-c C-t") 'haskell-process-do-type)
+  (define-key haskell-mode-map (kbd "C-c C-i") 'haskell-process-do-info)
+
+  ;; Contextually do clever things on the space key, in particular:
+  ;;   1. Complete imports, letting you choose the module name.
+  ;;   2. Show the type of the symbol after the space.
+  (define-key haskell-mode-map (kbd "SPC") 'haskell-mode-contextual-space)
+
+  ;; Jump to the imports. Keep tapping to jump between import
+  ;; groups. C-u f8 to jump back again.
+  (define-key haskell-mode-map [f8] 'haskell-navigate-imports)
+
+  ;; Jump to the definition of the current symbol.
+  (define-key haskell-mode-map (kbd "M-.") 'haskell-mode-tag-find)
+
+  ;; Indent the below lines on columns after the current column.
+  (define-key haskell-mode-map (kbd "C-<right>")
+    (lambda ()
+      (interactive)
+      (haskell-move-nested 1)))
+  ;; Same as above but backwards.
+  (define-key haskell-mode-map (kbd "C-<left>")
+    (lambda ()
+      (interactive)
+      (haskell-move-nested -1)))
+  )
+
+(add-hook 'haskell-mode-hook 'interactive-haskell-mode)
+(add-hook 'haskell-mode-hook 'haskell-indentation-mode)
 (add-hook 'haskell-mode-hook 'haskell-config)
+
+(eval-after-load "haskell-mode"
+  '(progn
+     (define-key haskell-mode-map (kbd "C-x C-d") nil)
+     (define-key haskell-mode-map (kbd "C-c C-z") 'haskell-interactive-switch)
+     (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-load-file)
+     (define-key haskell-mode-map (kbd "C-c C-b") 'haskell-interactive-switch)
+     (define-key haskell-mode-map (kbd "C-c C-t") 'haskell-process-do-type)
+     (define-key haskell-mode-map (kbd "C-c C-i") 'haskell-process-do-info)
+     (define-key haskell-mode-map (kbd "C-c M-.") nil)
+     (define-key haskell-mode-map (kbd "C-c C-d") nil)))
 
 ;; Speedbar Configuration
 (require 'speedbar)
@@ -146,21 +258,7 @@
 ;; Require ox-confluence
 (require 'ox-confluence)
 
-;; Enhanced Ruby Mode
-(add-hook 'ruby-mode    'rainbow-delimiters-mode)
-(add-hook 'enh-ruby-mode-hook 'fci-mode)
-(add-hook 'enh-ruby-mode-hook 'turn-on-auto-fill)
-(add-hook 'enh-ruby-mode-hook 'rainbow-delimiters-mode)
-(add-hook 'enh-ruby-mode-hook 'auto-complete-mode)
-
-(add-to-list 'load-path (concat user-emacs-directory (convert-standard-filename "extern/enhanced-ruby-mode/")))
-(autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
-(add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
-(add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
-(require 'enh-ruby-mode)
-
-;; Inf-Ruby
-(setq inf-ruby-default-implementation "pry") ; Use pry by default instead of irb for inf-ruby mode
+(ruby-config)
 
 (provide 'init)
 ;;; init.el ends here
