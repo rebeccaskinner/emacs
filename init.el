@@ -19,6 +19,7 @@
                          ("melpa"        . "http://melpa.org/packages/")))
 (package-initialize)
 
+
 (defun require-package (package)
   (setq-default highlight-tabs t)
   "Install given PACKAGE."
@@ -28,6 +29,31 @@
     (package-install package)))
 
 (setq-default indent-tabs-mode nil)
+
+(defun add-to-paths (path)
+  (setenv "PATH" (concat path (concat ":" (getenv "PATH"))))
+  (add-to-list 'exec-path path)
+;  (setq exec-path (append exec-path (path)))
+  )
+
+(defun make-home-path (path)
+  (concat (getenv "HOME") (concat "/" path))
+  )
+
+(defun cabal-path-cfg ()
+  (add-to-paths (make-home-path ".cabal/bin"))
+  )
+
+(defun gem-path-cfg ()
+  (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
+  )
+
+(defun update-path ()
+  (cabal-path-cfg)
+  (gem-path-cfg)
+  )
+
+(update-path)
 
 ;; Turn on visual line-wrapping mode
 (add-hook 'text-mode-hook 'turn-on-visual-line-mode)
@@ -113,6 +139,7 @@
   (window-margin-mode)
   )
 
+
 (defun load-enh-ruby-mode ()
   (defvar ruby-mode-path (convert-standard-filename
                           "extern/enhanced-ruby-mode/"))
@@ -159,13 +186,6 @@
  '(haskell-tags-on-save t)
  '(haskell-stylish-on-save t)
  )
-
-(defun cabal-path-cfg ()
-  (defvar cabal-path)
-  (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
-  (setenv "PATH" (concat (getenv "PATH") '(concat ":" 'cabal-path)))
-  (setq exec-path (append exec-path 'cabal-path))
-  )
 
 (defun haskell-config ()
   (default-programming-config)
@@ -220,8 +240,8 @@
   )
 
 (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
-(add-hook 'haskell-mode-hook 'haskell-indentation-mode)
 (add-hook 'haskell-mode-hook 'haskell-config)
+(add-hook 'haskell-mode-hook 'turn-on-haskell-simple-indent)
 
 (eval-after-load "haskell-mode"
   '(progn
