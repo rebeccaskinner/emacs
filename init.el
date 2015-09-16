@@ -18,6 +18,7 @@
                          ("melpa"        . "http://melpa.org/packages/")))
 (package-initialize)
 
+
 (defun require-package (package)
   (setq-default highlight-tabs t)
   "Install given PACKAGE."
@@ -27,6 +28,37 @@
     (package-install package)))
 
 (setq-default indent-tabs-mode nil)
+
+(defun add-to-paths (path)
+  (setenv "PATH" (concat path (concat ":" (getenv "PATH"))))
+  (add-to-list 'exec-path path)
+;  (setq exec-path (append exec-path (path)))
+  )
+
+(defun make-home-path (path)
+  (concat (getenv "HOME") (concat "/" path))
+  )
+
+(defun gem-path-cfg ()
+  (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
+  )
+
+(defun cabal-path-cfg ()
+  (defvar cabal-path)
+  (defvar new-path)
+  (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
+  (set 'new-path (concat (getenv "PATH") (concat ":" cabal-path)))
+  (setenv "PATH" new-path)
+  (setq exec-path (append exec-path (list cabal-path)))
+  )
+
+
+(defun update-path ()
+  (cabal-path-cfg)
+  (gem-path-cfg)
+  )
+
+(update-path)
 
 ;; Turn on visual line-wrapping mode
 (add-hook 'text-mode-hook 'turn-on-visual-line-mode)
@@ -106,6 +138,7 @@
   (window-margin-mode)
   )
 
+
 (defun load-enh-ruby-mode ()
   (defvar ruby-mode-path (convert-standard-filename
                           "extern/enhanced-ruby-mode/"))
@@ -175,18 +208,15 @@
 (require 'haskell-process)
 (load "haskell-mode-autoloads")
 
-(defun cabal-path-cfg ()
-  (defvar cabal-path)
-  (defvar new-path)
-  (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
-  (set 'new-path (concat (getenv "PATH") (concat ":" cabal-path)))
-  (setenv "PATH" new-path)
-  (setq exec-path (append exec-path (list cabal-path)))
-  )
 
 (defun haskell-config ()
   (default-programming-config)
   (cabal-path-cfg)
+  (custom-set-variables
+   '(haskell-notify-p t)
+   '(haskell-tags-on-save t)
+   '(haskell-stylish-on-save t)
+   )
   ;; Use simple indentation.
   (turn-on-haskell-simple-indent)
   (define-key haskell-mode-map (kbd "<return>") 'haskell-simple-indent-newline-same-col)
@@ -236,8 +266,9 @@
       (haskell-move-nested -1)))
   )
 
-(add-hook 'haskell-mode-hook 'haskell-config)
 (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
+(add-hook 'haskell-mode-hook 'haskell-config)
+(add-hook 'haskell-mode-hook 'turn-on-haskell-simple-indent)
 
 (eval-after-load "haskell-mode"
   '(progn
