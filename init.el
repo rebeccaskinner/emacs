@@ -1,4 +1,3 @@
-;;; Commentary:
 
 ;;; Code:
 (require 'cl)
@@ -38,30 +37,24 @@
 ;; flycheck
 (add-hook 'after-init-hook #'global-flycheck-mode)
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(tool-bar-mode nil))
-
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Source Code Pro"
-                :foundry "adobe"
-                :slant normal
-                :weight normal
-                :height 82
-                :width normal)))))
+ '(default ((t (:family "Source Code Pro" :foundry "adobe" :slant normal :weight semi-bold :height 100 :width normal)))))
 
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(column-number-mode t)
+ '(scroll-bar-mode nil)
+ '(show-paren-mode t)
+ '(tool-bar-mode nil))
 
 (load-theme 'adwaita)
-
-;; Highlight matching parentheses
-(show-paren-mode 1)
 
 ;; Rainbow Delimiters
 (require 'rainbow-delimiters)
@@ -142,8 +135,36 @@
   (turn-on-enhanced-ruby-mode)
   )
 
+(add-hook 'ruby-mode-hook 'ruby-config)
+
 (add-hook 'json-mode-hook 'json-mode-config)
 (add-hook 'markdown-mode-hook 'default-programming-config)
+
+(defadvice find-tag (around refresh-etags activate)
+  "Rerun etags and reload tags if tag not found and redo find-tag.              
+   If buffer is modified, ask about save before running etags."
+  (let ((extension (file-name-extension (buffer-file-name))))
+    (condition-case err
+        ad-do-it
+      (error (and (buffer-modified-p)
+                  (not (ding))
+                  (y-or-n-p "Buffer is modified, save it? ")
+                  (save-buffer))
+             (er-refresh-etags extension)
+             ad-do-it))))
+
+(defun er-refresh-etags (&optional extension)
+  "Run etags on all peer files in current dir and reload them silently."
+  (interactive)
+  (shell-command (format "etags *.%s" (or extension "el")))
+  (let ((tags-revert-without-query t))  ; don't query, revert silently          
+    (visit-tags-table default-directory nil)))
+
+(defun create-tags(format)
+  (eshell-command
+   (format "find %s -type f -name \"%s\" | etags -" (pwd) format)
+   )
+  )
 
 ;; Haskell Mode
 
@@ -154,17 +175,13 @@
 (require 'haskell-process)
 (load "haskell-mode-autoloads")
 
-(custom-set-variables
- '(haskell-notify-p t)
- '(haskell-tags-on-save t)
- '(haskell-stylish-on-save t)
- )
-
 (defun cabal-path-cfg ()
   (defvar cabal-path)
+  (defvar new-path)
   (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
-  (setenv "PATH" (concat (getenv "PATH") '(concat ":" 'cabal-path)))
-  (setq exec-path (append exec-path 'cabal-path))
+  (set 'new-path (concat (getenv "PATH") (concat ":" cabal-path)))
+  (setenv "PATH" new-path)
+  (setq exec-path (append exec-path (list cabal-path)))
   )
 
 (defun haskell-config ()
@@ -219,9 +236,8 @@
       (haskell-move-nested -1)))
   )
 
-(add-hook 'haskell-mode-hook 'interactive-haskell-mode)
-(add-hook 'haskell-mode-hook 'haskell-indentation-mode)
 (add-hook 'haskell-mode-hook 'haskell-config)
+(add-hook 'haskell-mode-hook 'interactive-haskell-mode)
 
 (eval-after-load "haskell-mode"
   '(progn
@@ -243,6 +259,10 @@
 (setq TeX-parse-self t); Enable automatic parsing
 (setq TeX-auto-save t); Enable parse on save
 
+(defun extra-cc-keybindings()
+  (global-set-key (kbd "C-?") (kbd "M-x manual-entry RET"))
+  )
+
 ;; Cc Mode
 ;; Set the indentation to 4 spaces
 (setq-default c-basic-offset 4
@@ -252,13 +272,16 @@
 (add-hook 'cc-mode-hook 'turn-on-auto-fill)
 
 ;; set up auto-complete-mode for C files
-(add-hook 'c-mode-hook 'auto-complete-mode)
 (add-hook 'cc-mode-hook 'auto-complete-mode)
+(add-hook 'cc-mode-hook 'etags-c-tags)
+(add-hook 'cc-mode-hook 'auto-complete-mode)
+(add-hook 'cc-mode-hook 'extra-cc-keybindings)
 
 ;; Require ox-confluence
 (require 'ox-confluence)
 
 (ruby-config)
+
 
 (provide 'init)
 ;;; init.el ends here
