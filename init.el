@@ -5,9 +5,17 @@
 ;; Disable the splash screen
 (setq inhibit-splash-screen t)
 
+(defun emacs-cfg-dir ()
+  (if (boundp 'user-emacs-directory)
+      user-emacs-directory
+    (concat (getenv "HOME") "/.emacs.d/")
+    )
+  )
+
+ 
 ;; Add "~/.emacs.d/lisp/" to the load path
 (add-to-list 'load-path (concat
-                         user-emacs-directory
+                         (emacs-cfg-dir)
                          (convert-standard-filename "lisp/")
                          ))
 
@@ -32,7 +40,6 @@
 (defun add-to-paths (path)
   (setenv "PATH" (concat path (concat ":" (getenv "PATH"))))
   (add-to-list 'exec-path path)
-;  (setq exec-path (append exec-path (path)))
   )
 
 (defun make-home-path (path)
@@ -52,10 +59,14 @@
   (setq exec-path (append exec-path (list cabal-path)))
   )
 
+(defun brew-path-cfg ()
+  (add-to-paths "/usr/local/bin")
+  )
 
 (defun update-path ()
   (cabal-path-cfg)
   (gem-path-cfg)
+  (brew-path-cfg)
   )
 
 (update-path)
@@ -74,7 +85,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Source Code Pro" :foundry "adobe" :slant normal :weight semi-bold :height 100 :width normal)))))
+ '(default ((t (:family "Source Code Pro" :foundry "adobe" :slant normal :weight medium :height 100 :width normal)))))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -114,6 +125,11 @@
   (require 'expand-region)
   (global-set-key (kbd "C-=") 'er/expand-region))
 
+(defun line-nums ()
+  (global-linum-mode 1)
+  (setq linum-format "%4d \u2502 ")
+  )
+
 ;; mode specific configs
 
 (defun default-programming-config ()
@@ -122,12 +138,21 @@
   (rainbow-delimiters-mode 1)
   (fci-mode 1)
   (set-fill-column 80)
-  (enable-expand-region))
+  (enable-expand-region)
+  (line-nums)
+  )
 
 ;; emacs lisp mode configuration
 
+(defun configure-distel ()
+  (add-to-list 'load-path "/Users/rebecca/repos/distel/elisp")
+  (require 'distel)
+  (distel-setup)
+  )
+
 (defun elisp-config ()
   (default-programming-config)
+  (configure-distel)
   )
 
 (add-hook 'emacs-lisp-mode-hook 'elisp-config)
@@ -138,14 +163,21 @@
   (window-margin-mode)
   )
 
+;; Erlang Mode
+(defun erlang-config ()
+  (default-programming-config)
+  )
 
+(add-hook 'erlang-mode-hook 'erlang-config)
+
+;; Ruby Mode
 (defun load-enh-ruby-mode ()
-  (defvar ruby-mode-path (convert-standard-filename
-                          "extern/enhanced-ruby-mode/"))
-  (add-to-list 'load-path (concat user-emacs-directory ruby-mode-path))
-  (autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
-  (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
-  (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
+;   (defvar ruby-mode-path (convert-standard-filename
+;                           "extern/enhanced-ruby-mode/"))
+;   (add-to-list 'load-path (concat user-emacs-directory ruby-mode-path))
+;   (autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
+;   (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
+;   (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
   (require 'enh-ruby-mode)
   )
 
@@ -198,6 +230,8 @@
    (format "find %s -type f -name \"%s\" | etags -" (pwd) format)
    )
   )
+
+;; Erlang Mode
 
 ;; Haskell Mode
 
