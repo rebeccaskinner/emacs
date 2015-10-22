@@ -1,3 +1,6 @@
 [submodule "extern/enhanced-ruby-mode"]
 	path = extern/enhanced-ruby-mode
 	url = https://github.com/zenspider/enhanced-ruby-mode
+[submodule "distel"]
+	path = distel
+	url = git@github.com:massemanet/distel.git
