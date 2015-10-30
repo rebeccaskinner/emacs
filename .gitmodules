@@ -4,3 +4,6 @@
 [submodule "distel"]
 	path = distel
 	url = git@github.com:massemanet/distel.git
+[submodule "lisp/rebar.el"]
+	path = rebar.el
+	url = git@github.com:leoliu/rebar.el.git

@@ -1,3 +1,5 @@
+;;; init --- Emacs configuration
+;;; Commentary:
 
 ;;; Code:
 (require 'cl)
@@ -18,6 +20,7 @@
                          (emacs-cfg-dir)
                          (convert-standard-filename "lisp/")
                          ))
+(add-to-list 'load-path "/Users/rebecca/repos/emacs/distel/elisp")
 
 ;; packages
 (setq package-archives '(("gnu"          . "http://elpa.gnu.org/packages/")
@@ -114,6 +117,7 @@
 (add-hook 'cmake-mode 'rainbow-delimiters-mode)
 
 (defun soft-wrap-config (&optional width)
+  "Configure soft-wrap to WIDTH columns of text, and set a visual fill column at the boundry."
   (unless width (setq width 80))
   (set-fill-column width)
   (fci-mode 1)
@@ -122,16 +126,23 @@
   (window-margin-mode))
 
 (defun enable-expand-region ()
+  "Configures the 'expand-region' command for development modes."
   (require 'expand-region)
   (global-set-key (kbd "C-=") 'er/expand-region))
 
 (defun line-nums ()
+  "Enable global line numbers for programming modes."
   (global-linum-mode 1)
   (setq linum-format "%4d \u2502 ")
   )
 
-;; mode specific configs
+;(defun configure-whitespace-visualizations()
+;  "Configures the default whitespace visualization style for development modes."
+;  (require 'whitespace)
+;  ()
+;  )
 
+;; mode specific configs
 (defun default-programming-config ()
   (auto-fill-mode 1)
   (auto-complete-mode 1)
@@ -143,16 +154,8 @@
   )
 
 ;; emacs lisp mode configuration
-
-(defun configure-distel ()
-  (add-to-list 'load-path "/Users/rebecca/repos/distel/elisp")
-  (require 'distel)
-  (distel-setup)
-  )
-
 (defun elisp-config ()
   (default-programming-config)
-  (configure-distel)
   )
 
 (add-hook 'emacs-lisp-mode-hook 'elisp-config)
@@ -164,11 +167,21 @@
   )
 
 ;; Erlang Mode
+(defun configure-distel ()
+
+  (require 'distel)
+  (distel-setup)
+  )
+
 (defun erlang-config ()
   (default-programming-config)
+;   (setq inferior-erlang-machine-options '("-sname" "emacs"))
+  (setq erlang-indent-level 2)
+  (configure-distel)
   )
 
 (add-hook 'erlang-mode-hook 'erlang-config)
+; (add-hook 'erlang-mode-hook 'rebar-mode)
 
 ;; Ruby Mode
 (defun load-enh-ruby-mode ()
