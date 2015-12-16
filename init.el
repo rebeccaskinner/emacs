@@ -1,4 +1,5 @@
 ;;; init --- Emacs configuration
+;;; provide (init)
 ;;; Commentary:
 
 ;;; Code:
@@ -31,8 +32,8 @@
 
 
 (defun require-package (package)
-  (setq-default highlight-tabs t)
   "Install given PACKAGE."
+  (setq-default highlight-tabs t)
   (unless (package-installed-p package)
     (unless (assoc package package-archive-contents)
       (package-refresh-contents))
@@ -41,38 +42,44 @@
 (setq-default indent-tabs-mode nil)
 
 (defun add-to-paths (path)
+  "Add PATH to the current Emacs search path."
   (setenv "PATH" (concat path (concat ":" (getenv "PATH"))))
   (add-to-list 'exec-path path)
   )
 
 (defun make-home-path (path)
+  "Make a PATH string relative to the current users home directory."
   (concat (getenv "HOME") (concat "/" path))
   )
 
-(defun gem-path-cfg ()
-  (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
-  )
-
-(defun cabal-path-cfg ()
-  (defvar cabal-path)
-  (defvar new-path)
-  (set 'cabal-path (concat (getenv "HOME") "/.cabal/bin"))
-  (set 'new-path (concat (getenv "PATH") (concat ":" cabal-path)))
-  (setenv "PATH" new-path)
-  (setq exec-path (append exec-path (list cabal-path)))
-  )
-
-(defun brew-path-cfg ()
-  (add-to-paths "/usr/local/bin")
-  )
-
 (defun update-path ()
-  (cabal-path-cfg)
-  (gem-path-cfg)
-  (brew-path-cfg)
+  "Add several useful paths to the default searchpath."
+  (add-to-paths (make-home-path ".cabal/bin"))
+  (add-haskell-paths)
+  (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
+  (add-to-paths "/usr/local/bin")
+  (add-to-paths "/usr/local/texlive/2015/bin/x86_64-darwin/")
   )
 
 (update-path)
+
+;; Setup a backup directory so that working directories aren't polluted with
+;; backup files
+(defun set-backups-to-tempdir ()
+  "Configure Emacs to store backup files in /tmp/emacs.$UID."
+  (defconst emacs-tmp-dir (format "%s%s%s"
+                                  temporary-file-directory
+                                  "emacs."
+                                  (user-id)))
+  (setq backup-directory-alist
+        `((".*" ., emacs-tmp-dir)))
+  (setq auto-save-file-name-transforms
+        `((".*", emacs-tmp-dir t)))
+  (setq auto-save-list-file-prefix
+        emacs-tmp-dir)
+  )
+
+(set-backups-to-tempdir)
 
 ;; Turn on visual line-wrapping mode
 (add-hook 'text-mode-hook 'turn-on-visual-line-mode)
@@ -96,6 +103,10 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(column-number-mode t)
+ '(safe-local-variable-values
+   (quote
+    ((haskell-process-use-ghci . t)
+     (haskell-indent-spaces . 2))))
  '(scroll-bar-mode nil)
  '(show-paren-mode t)
  '(tool-bar-mode nil))
@@ -144,6 +155,7 @@
 
 ;; mode specific configs
 (defun default-programming-config ()
+  "Configure some sane defaults shared across various programming-related major modes."
   (auto-fill-mode 1)
   (auto-complete-mode 1)
   (rainbow-delimiters-mode 1)
@@ -155,12 +167,14 @@
 
 ;; emacs lisp mode configuration
 (defun elisp-config ()
+  "Configuration for elisp-mode."
   (default-programming-config)
   )
 
 (add-hook 'emacs-lisp-mode-hook 'elisp-config)
 
 (defun json-mode-config ()
+  "Configuration for JSON-mode."
   (rainbow-delimiters-mode)
   (setq visual-line-fringe-indicators '(left-curly-arrow right-curly-arrow))
   (window-margin-mode)
@@ -168,12 +182,13 @@
 
 ;; Erlang Mode
 (defun configure-distel ()
-
+  "Setup distel for erlang projects."
   (require 'distel)
   (distel-setup)
   )
 
 (defun erlang-config ()
+  "Configure some defaults for erlang-mode."
   (default-programming-config)
 ;   (setq inferior-erlang-machine-options '("-sname" "emacs"))
   (setq erlang-indent-level 2)
@@ -184,18 +199,10 @@
 ; (add-hook 'erlang-mode-hook 'rebar-mode)
 
 ;; Ruby Mode
-(defun load-enh-ruby-mode ()
-;   (defvar ruby-mode-path (convert-standard-filename
-;                           "extern/enhanced-ruby-mode/"))
-;   (add-to-list 'load-path (concat user-emacs-directory ruby-mode-path))
-;   (autoload 'enh-ruby-mode "enh-ruby-mode" "Major mode for ruby files" t)
-;   (add-to-list 'auto-mode-alist '("\\.rb$" . enh-ruby-mode))
-;   (add-to-list 'interpreter-mode-alist '("ruby" . enh-ruby-mode))
-  (require 'enh-ruby-mode)
-  )
 
 (defun turn-on-enhanced-ruby-mode ()
-  (load-enh-ruby-mode)
+  "Enable enh-ruby-mode and add some configuration options."
+  (require 'enh-ruby-mode)
   (add-hook 'enh-ruby-mode-hook 'fci-mode)
   (add-hook 'enh-ruby-mode-hook 'turn-on-auto-fill)
   (add-hook 'enh-ruby-mode-hook 'rainbow-delimiters-mode)
@@ -203,24 +210,25 @@
   )
 
 (defun configure-inf-ruby ()
-  ;; Use Pry instead of irb as the REPL for inferior ruby mode
+  "Use Pry instead of irb as the REPL for inferior ruby mode."
   (setq inf-ruby-default-implementation "pry")
   )
 
 (defun ruby-config ()
+  "Setup 'ruby-mode` and enh-ruby-mode parameters for ruby editing."
   (default-programming-config)
   (configure-inf-ruby)
   (turn-on-enhanced-ruby-mode)
   )
-
+p
 (add-hook 'ruby-mode-hook 'ruby-config)
 
 (add-hook 'json-mode-hook 'json-mode-config)
 (add-hook 'markdown-mode-hook 'default-programming-config)
 
 (defadvice find-tag (around refresh-etags activate)
-  "Rerun etags and reload tags if tag not found and redo find-tag.              
-   If buffer is modified, ask about save before running etags."
+  "Rerun etags and reload tags if tag not found and redo `find-tag'."              
+  "If buffer is modified, ask about save before running etags."
   (let ((extension (file-name-extension (buffer-file-name))))
     (condition-case err
         ad-do-it
@@ -232,7 +240,9 @@
              ad-do-it))))
 
 (defun er-refresh-etags (&optional extension)
-  "Run etags on all peer files in current dir and reload them silently."
+  "Run `etags' on all peer files in current dir and reload them silentlyf, \
+if EXTENSION is specified, use it for refreshing etags, or default to .el."
+  
   (interactive)
   (shell-command (format "etags *.%s" (or extension "el")))
   (let ((tags-revert-without-query t))  ; don't query, revert silently          
@@ -257,6 +267,7 @@
 
 
 (defun haskell-config ()
+  "Setup a sane haskell development environment."
   (default-programming-config)
   (cabal-path-cfg)
   (custom-set-variables
@@ -264,8 +275,8 @@
    '(haskell-tags-on-save t)
    '(haskell-stylish-on-save t)
    )
-  ;; Use simple indentation.
-  (turn-on-haskell-simple-indent)
+  ;; Use haskell indentation.
+  (haskell-indent-mode)
   (define-key haskell-mode-map (kbd "<return>") 'haskell-simple-indent-newline-same-col)
   (define-key haskell-mode-map (kbd "C-<return>") 'haskell-simple-indent-newline-indent)
 
@@ -321,7 +332,7 @@
   '(progn
      (define-key haskell-mode-map (kbd "C-x C-d") nil)
      (define-key haskell-mode-map (kbd "C-c C-z") 'haskell-interactive-switch)
-     (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-load-file)
+     (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-looad-file)
      (define-key haskell-mode-map (kbd "C-c C-b") 'haskell-interactive-switch)
      (define-key haskell-mode-map (kbd "C-c C-t") 'haskell-process-do-type)
      (define-key haskell-mode-map (kbd "C-c C-i") 'haskell-process-do-info)
@@ -360,6 +371,4 @@
 
 (ruby-config)
 
-
-(provide 'init)
 ;;; init.el ends here
