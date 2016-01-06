@@ -55,7 +55,6 @@
 (defun update-path ()
   "Add several useful paths to the default searchpath."
   (add-to-paths (make-home-path ".cabal/bin"))
-  (add-haskell-paths)
   (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
   (add-to-paths "/usr/local/bin")
   (add-to-paths "/usr/local/texlive/2015/bin/x86_64-darwin/")
@@ -65,21 +64,21 @@
 
 ;; Setup a backup directory so that working directories aren't polluted with
 ;; backup files
-(defun set-backups-to-tempdir ()
-  "Configure Emacs to store backup files in /tmp/emacs.$UID."
-  (defconst emacs-tmp-dir (format "%s%s%s"
-                                  temporary-file-directory
-                                  "emacs."
-                                  (user-id)))
-  (setq backup-directory-alist
-        `((".*" ., emacs-tmp-dir)))
-  (setq auto-save-file-name-transforms
-        `((".*", emacs-tmp-dir t)))
-  (setq auto-save-list-file-prefix
-        emacs-tmp-dir)
-  )
+;; (defun set-backups-to-tempdir ()
+;;   "Configure Emacs to store backup files in /tmp/emacs.$UID."
+;;   (defconst emacs-tmp-dir (format "%s%s%s"
+;;                                   temporary-file-directory
+;;                                   "emacs."
+;;                                   (user-id)))
+;;   (setq backup-directory-alist
+;;         `((".*" ., emacs-tmp-dir)))
+;;   (setq auto-save-file-name-transforms
+;;         `((".*", emacs-tmp-dir t)))
+;;   (setq auto-save-list-file-prefix
+;;         emacs-tmp-dir)
+;;  )
 
-(set-backups-to-tempdir)
+;; (set-backups-to-tempdir)
 
 ;; Turn on visual line-wrapping mode
 (add-hook 'text-mode-hook 'turn-on-visual-line-mode)
@@ -183,16 +182,82 @@
 ;; Erlang Mode
 (defun configure-distel ()
   "Setup distel for erlang projects."
+  (let ((distel-dir "/usr/local/share/distel/elisp")) ; Add distel-dir to the end of load-path
+    (unless (member distel-dir load-path)
+      (setq load-path (append load-path (list distel-dir)))))
+  ;; (add-to-list 'load-path "/usr/local/share/distel/elisp")
   (require 'distel)
   (distel-setup)
   )
 
 (defun erlang-config ()
   "Configure some defaults for erlang-mode."
+
+  (defun erl-shell-with-flags (flags)
+  "Start an erlang shell with flags"
+  (interactive (list (read-string "Flags: ")))
+  (set 'inferior-erlang-machine-options (split-string flags))
+  (erlang-shell))
+
   (default-programming-config)
-;   (setq inferior-erlang-machine-options '("-sname" "emacs"))
+  (setq inferior-erlang-machine-options '("-sname" "emacs"))
   (setq erlang-indent-level 2)
   (configure-distel)
+  (flycheck-mode 0)
+  (flymake-mode 1)
+  (require 'erlang-flymake)                           ; Automatic compilation of Erlang code
+  (erlang-flymake-only-on-save)                       ; Only run flymake after
+                                        ; saving a file
+
+  ;; To integrate Flymake with rebar; these functions look for th topmost rebar.config
+(defun ebm-find-rebar-top-recr (dirname)
+  (let* ((project-dir (locate-dominating-file dirname "rebar.config")))
+    (if project-dir
+        (let* ((parent-dir (file-name-directory (directory-file-name project-dir)))
+               (top-project-dir (if (and parent-dir (not (string= parent-dir "/")))
+                                    (ebm-find-rebar-top-recr parent-dir)
+                                  nil)))
+          (if top-project-dir
+              top-project-dir
+            project-dir))
+      project-dir)))
+
+(defun ebm-find-rebar-top ()
+  (interactive)
+  (let* ((dirname (file-name-directory (buffer-file-name)))
+         (project-dir (ebm-find-rebar-top-recr dirname)))
+    (if project-dir
+        project-dir
+      (erlang-flymake-get-app-dir))))
+
+(defun ebm-directory-dirs (dir name)
+  "Find all directories in DIR."
+  (unless (file-directory-p dir)
+    (error "Not a directory `%s'" dir))
+  (let ((dir (directory-file-name dir))
+        (dirs '())
+        (files (directory-files dir nil nil t)))
+    (dolist (file files)
+      (unless (member file '("." ".."))
+        (let ((absolute-path (expand-file-name (concat dir "/" file))))
+          (when (file-directory-p absolute-path)
+            (if (string= file name)
+                (setq dirs (append (cons absolute-path
+                                         (ebm-directory-dirs absolute-path name))
+                                   dirs))
+              (setq dirs (append
+                          (ebm-directory-dirs absolute-path name)
+                          dirs)))))))
+    dirs))
+
+(defun ebm-get-deps-code-path-dirs ()
+  (ebm-directory-dirs (ebm-find-rebar-top) "ebin"))
+
+(defun ebm-get-deps-include-dirs ()
+  (ebm-directory-dirs (ebm-find-rebar-top) "include"))
+
+(fset 'erlang-flymake-get-code-path-dirs 'ebm-get-deps-code-path-dirs)
+(fset 'erlang-flymake-get-include-dirs-function 'ebm-get-deps-include-dirs)
   )
 
 (add-hook 'erlang-mode-hook 'erlang-config)
@@ -220,7 +285,7 @@
   (configure-inf-ruby)
   (turn-on-enhanced-ruby-mode)
   )
-p
+
 (add-hook 'ruby-mode-hook 'ruby-config)
 
 (add-hook 'json-mode-hook 'json-mode-config)
