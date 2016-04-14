@@ -15,13 +15,17 @@
     )
   )
 
- 
+
 ;; Add "~/.emacs.d/lisp/" to the load path
 (add-to-list 'load-path (concat
                          (emacs-cfg-dir)
                          (convert-standard-filename "lisp/")
                          ))
 (add-to-list 'load-path "/Users/rebecca/repos/emacs/distel/elisp")
+(add-to-list 'load-path "/Users/rebecca/repos/emacs/")
+
+(require 'cfg-pkg-deps)
+(setq cfg-pkg-installed-package-list (concat user-emacs-directory "installed-packages"))
 
 ;; packages
 (setq package-archives '(("gnu"          . "http://elpa.gnu.org/packages/")
@@ -29,6 +33,16 @@
                          ("marmalade"    . "http://marmalade-repo.org/packages/")
                          ("melpa"        . "http://melpa.org/packages/")))
 (package-initialize)
+
+(defun configure-temp-files()
+  "Set the auto-save and backup files to /tmp/"
+  (setq backup-directory-alist
+        `((".*" . ,temporary-file-directory)))
+  (setq auto-save-file-name-transforms
+        `((".*" ,temporary-file-directory t)))
+  )
+
+(configure-temp-files)
 
 
 (defun require-package (package)
@@ -58,27 +72,10 @@
   (add-to-paths (make-home-path ".gem/ruby/2.1.0/bin"))
   (add-to-paths "/usr/local/bin")
   (add-to-paths "/usr/local/texlive/2015/bin/x86_64-darwin/")
+  (add-to-paths (make-home-path ".rbenv/shims"))
   )
 
 (update-path)
-
-;; Setup a backup directory so that working directories aren't polluted with
-;; backup files
-;; (defun set-backups-to-tempdir ()
-;;   "Configure Emacs to store backup files in /tmp/emacs.$UID."
-;;   (defconst emacs-tmp-dir (format "%s%s%s"
-;;                                   temporary-file-directory
-;;                                   "emacs."
-;;                                   (user-id)))
-;;   (setq backup-directory-alist
-;;         `((".*" ., emacs-tmp-dir)))
-;;   (setq auto-save-file-name-transforms
-;;         `((".*", emacs-tmp-dir t)))
-;;   (setq auto-save-list-file-prefix
-;;         emacs-tmp-dir)
-;;  )
-
-;; (set-backups-to-tempdir)
 
 ;; Turn on visual line-wrapping mode
 (add-hook 'text-mode-hook 'turn-on-visual-line-mode)
@@ -162,6 +159,7 @@
   (set-fill-column 80)
   (enable-expand-region)
   (line-nums)
+  (add-hook 'before-save-hook 'whitespace-cleanup)
   )
 
 ;; emacs lisp mode configuration
@@ -179,6 +177,36 @@
   (window-margin-mode)
   )
 
+;; Go Mode
+(defun my-go-mode-hook ()
+  "Use goimports instead of go-fmt."
+  (default-programming-config)
+
+  ;; Set GOPATH in the emacs environment
+  (setenv "GOPATH" (concat (getenv "HOME") "/go"))
+
+  ; Call Gofmt before saving
+  (add-hook 'before-save-hook 'gofmt-before-save)
+
+  ;; Add $GOPATH/bin/ to the search path for executable binaries
+  (add-to-paths (make-home-path "go/bin"))
+
+  (load-file "$GOPATH/src/golang.org/x/tools/cmd/oracle/oracle.el")
+  (local-set-key (kbd "M-.") 'godef-jump)
+
+  ;; setup autocomplete for go
+  (require 'go-autocomplete)
+  (require 'auto-complete-config)
+  (ac-config-default)
+
+  ;; Set the tab-width to something reasonable
+  (setq tab-width 2)
+
+  ; Use goimports instead of go-fmt
+  (setq gofmt-command "goimports")
+  )
+(add-hook 'go-mode-hook 'my-go-mode-hook)
+
 ;; Erlang Mode
 (defun configure-distel ()
   "Setup distel for erlang projects."
@@ -192,6 +220,8 @@
 
 (defun erlang-config ()
   "Configure some defaults for erlang-mode."
+
+  (add-hook 'before-save-hook 'cleanup-whitespace)
 
   (defun erl-shell-with-flags (flags)
   "Start an erlang shell with flags"
@@ -292,7 +322,7 @@
 (add-hook 'markdown-mode-hook 'default-programming-config)
 
 (defadvice find-tag (around refresh-etags activate)
-  "Rerun etags and reload tags if tag not found and redo `find-tag'."              
+  "Rerun etags and reload tags if tag not found and redo `find-tag'."
   "If buffer is modified, ask about save before running etags."
   (let ((extension (file-name-extension (buffer-file-name))))
     (condition-case err
@@ -307,10 +337,10 @@
 (defun er-refresh-etags (&optional extension)
   "Run `etags' on all peer files in current dir and reload them silentlyf, \
 if EXTENSION is specified, use it for refreshing etags, or default to .el."
-  
+
   (interactive)
   (shell-command (format "etags *.%s" (or extension "el")))
-  (let ((tags-revert-without-query t))  ; don't query, revert silently          
+  (let ((tags-revert-without-query t))  ; don't query, revert silently
     (visit-tags-table default-directory nil)))
 
 (defun create-tags(format)
@@ -341,6 +371,7 @@ if EXTENSION is specified, use it for refreshing etags, or default to .el."
    '(haskell-stylish-on-save t)
    )
   ;; Use haskell indentation.
+  (inf-haskell-mode)
   (haskell-indent-mode)
   (define-key haskell-mode-map (kbd "<return>") 'haskell-simple-indent-newline-same-col)
   (define-key haskell-mode-map (kbd "C-<return>") 'haskell-simple-indent-newline-indent)
@@ -397,7 +428,7 @@ if EXTENSION is specified, use it for refreshing etags, or default to .el."
   '(progn
      (define-key haskell-mode-map (kbd "C-x C-d") nil)
      (define-key haskell-mode-map (kbd "C-c C-z") 'haskell-interactive-switch)
-     (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-looad-file)
+     (define-key haskell-mode-map (kbd "C-c C-l") 'haskell-process-load-file)
      (define-key haskell-mode-map (kbd "C-c C-b") 'haskell-interactive-switch)
      (define-key haskell-mode-map (kbd "C-c C-t") 'haskell-process-do-type)
      (define-key haskell-mode-map (kbd "C-c C-i") 'haskell-process-do-info)
@@ -408,6 +439,32 @@ if EXTENSION is specified, use it for refreshing etags, or default to .el."
 (require 'speedbar)
 ;; Enable speedbar for haskell files
 (speedbar-add-supported-extension ".hs")
+
+;; TeX Mode
+(defun beamer-utils()
+  (defun beamer-new-frame(name)
+  (insert "\\begin{frame}")
+  (reindent-then-newline-and-indent)
+  (insert "\\frametitle{")
+  (insert name)
+  (insert "}")
+  (reindent-then-newline-and-indent)
+  (insert "\\end{frame}")
+  (reindent-then-newline-and-indent)
+  (previous-line)
+  (previous-line)
+  (end-of-line)
+  (newline-and-indent)
+  )
+
+(defun new-slide()
+  "Get a slide NAME and insert it."
+  (interactive)
+  (let ((name (read-string "Frame Title: ")))
+    (beamer-new-frame name))
+  )
+ (global-set-key (kbd "C-c f") 'new-slide)
+)
 
 ;; AUCTeX-mode
 (setq TeX-parse-self t); Enable automatic parsing
